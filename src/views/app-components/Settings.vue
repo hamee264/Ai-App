@@ -93,17 +93,17 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '/src/lib/supabase'
 
 const router = useRouter()
 const showPassword = ref(false)
 
-const handleLogout = () => {
-  // Remove user session
-  localStorage.removeItem('user')
+const handleLogout = async () => {
+  // 🔐 Proper Supabase logout
+  await supabase.auth.signOut()
 
-  // Redirect to login
+  // 🚫 Prevent back navigation
   router.replace('/auth/login')
-
 }
 </script>
 

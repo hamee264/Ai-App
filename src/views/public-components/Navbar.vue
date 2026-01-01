@@ -58,7 +58,7 @@
         </ul>
 
         <!-- DESKTOP AUTH -->
-        <router-link to="/auth/login" class="nav-login desktop-only">
+        <router-link  v-if="!session" to="/auth/login" class="nav-login desktop-only">
           <i class="fas fa-right-to-bracket"></i> Login
         </router-link>
 

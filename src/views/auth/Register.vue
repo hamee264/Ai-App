@@ -1,51 +1,59 @@
 <template>
   <div class="container">
-    <form>
+    <form @submit.prevent="handleRegister">
       <h2>Create Account</h2>
 
+      <!-- FULL NAME -->
       <div class="input-group">
-        <label for="name">Full Name</label>
+        <label>Full Name</label>
         <input
           type="text"
-          id="name"
           v-model="name"
           placeholder="John Doe"
           required
         />
       </div>
 
+      <!-- EMAIL -->
       <div class="input-group">
-        <label for="email">Email</label>
+        <label>Email</label>
         <input
           type="email"
-          id="email"
           v-model="email"
           placeholder="you@example.com"
           required
         />
       </div>
 
+      <!-- PASSWORD -->
       <div class="input-group">
-        <label for="password">Password</label>
+        <label>Password</label>
         <input
           type="password"
-          id="password"
           v-model="password"
           required
         />
       </div>
 
+      <!-- CONFIRM PASSWORD -->
       <div class="input-group">
-        <label for="confirmPassword">Confirm Password</label>
+        <label>Confirm Password</label>
         <input
           type="password"
-          id="confirmPassword"
           v-model="confirmPassword"
           required
         />
       </div>
 
-      <button type="submit">Register</button>
+      <!-- ERROR MESSAGE -->
+      <p v-if="errorMsg" class="error">
+        {{ errorMsg }}
+      </p>
+
+      <!-- SUBMIT -->
+      <button type="submit" :disabled="loading">
+        {{ loading ? 'Creating account...' : 'Register' }}
+      </button>
 
       <!-- LOGIN LINK -->
       <div class="auth-links">
@@ -58,40 +66,51 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { supabase } from '/src/lib/supabase'
 
-export default {
-  data() {
-    return {
-      email: '',
-      password: '',
-      loading: false
-    }
-  },
+const router = useRouter()
 
-  methods: {
-    async handleRegister() {
-      this.loading = true
+const name = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const loading = ref(false)
+const errorMsg = ref('')
 
-      const { error } = await supabase.auth.signUp({
-        email: this.email,
-        password: this.password
-      })
+const handleRegister = async () => {
+  errorMsg.value = ''
 
-      this.loading = false
-
-      if (error) {
-        alert(error.message)
-        return
-      }
-
-      alert('Check your email to confirm your account')
-      this.$router.replace('/auth/login')
-    }
+  // 🔐 Password validation
+  if (password.value !== confirmPassword.value) {
+    errorMsg.value = 'Passwords do not match'
+    return
   }
+
+  loading.value = true
+
+  // ✅ SIGN UP (profile created by DB trigger)
+  const { error } = await supabase.auth.signUp({
+    email: email.value,
+    password: password.value,
+    options: {
+      data: {
+        name: name.value // 👈 goes to raw_user_meta_data
+      }
+    }
+  })
+
+  if (error) {
+    errorMsg.value = error.message
+    loading.value = false
+    return
+  }
+
+  // ✅ Redirect after successful signup
+  router.replace('/dashboard')
 }
 </script>
-
 
 <style src="/src/assets/css/auth.css"></style>

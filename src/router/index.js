@@ -1,23 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { supabase } from '/src/lib/supabase'
 
-// layouts
+/* ================= LAYOUTS ================= */
 import PublicLayout from '/src/components/layout/PublicLayout.vue'
 import AppLayout from '/src/components/layout/AppLayout.vue'
 import AuthLayout from '/src/components/layout/AuthLayout.vue'
 
-// public pages
+/* ================= PUBLIC PAGES ================= */
 import Home from '/src/views/public-components/Home.vue'
 import Faq from '/src/views/public-components/Faq.vue'
 import Features from '/src/views/public-components/Features.vue'
 
-// auth pages
+/* ================= AUTH PAGES ================= */
 import Login from '/src/views/auth/Login.vue'
 import Register from '/src/views/auth/Register.vue'
 import ForgotPassword from '/src/views/auth/ForgotPassword.vue'
 import ResetPassword from '/src/views/auth/ResetPassword.vue'
 
-// private pages
+/* ================= APP (PROTECTED) ================= */
 import Dashboard from '/src/views/app-components/Dashboard.vue'
 import Todos from '/src/views/app-components/Todos.vue'
 import AiChat from '/src/views/app-components/AiChat.vue'
@@ -25,7 +25,7 @@ import Settings from '/src/views/app-components/Settings.vue'
 
 /* ================= ROUTES ================= */
 const routes = [
-  /* -------- PUBLIC -------- */
+  /* ---------- PUBLIC ---------- */
   {
     path: '/',
     component: PublicLayout,
@@ -36,7 +36,7 @@ const routes = [
     ]
   },
 
-  /* -------- AUTH -------- */
+  /* ---------- AUTH ---------- */
   {
     path: '/auth',
     component: AuthLayout,
@@ -48,7 +48,7 @@ const routes = [
     ]
   },
 
-  /* -------- APP (PROTECTED) -------- */
+  /* ---------- APP (PROTECTED) ---------- */
   {
     path: '/',
     component: AppLayout,
@@ -59,6 +59,12 @@ const routes = [
       { path: 'ai-chat', component: AiChat },
       { path: 'settings', component: Settings }
     ]
+  },
+
+  /* ---------- FALLBACK ---------- */
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ]
 
@@ -68,21 +74,23 @@ const router = createRouter({
   routes
 })
 
-/* ================= SUPABASE AUTH GUARD ================= */
+/* ================= AUTH GUARD ================= */
 router.beforeEach(async (to, from, next) => {
   const { data } = await supabase.auth.getSession()
   const session = data.session
 
-  // Not logged in → trying to access protected page
-  if (to.meta.requiresAuth && !session) {
-    next('/auth/login')
-    return
+  const requiresAuth = to.matched.some(
+    route => route.meta.requiresAuth
+  )
+
+  // 🔒 Protected route but NOT logged in
+  if (requiresAuth && !session) {
+    return next('/auth/login')
   }
 
-  // Logged in → trying to access auth pages
-  if (to.path.startsWith('/auth') && session) {
-    next('/dashboard')
-    return
+  // 🔁 Logged in user trying to access auth pages
+  if (session && to.path.startsWith('/auth')) {
+    return next('/dashboard')
   }
 
   next()

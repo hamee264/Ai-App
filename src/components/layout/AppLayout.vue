@@ -51,16 +51,27 @@
           <button class="menu-btn mobile-only" @click="sidebarOpen = true">
             <i class="fas fa-bars"></i>
           </button>
-          <span class="page-title">Dashboard</span>
+          <span class="page-title">{{ pageTitle }}</span>
         </div>
 
-        <div class="nav-actions">
+        <!-- PROFILE AREA -->
+        <div class="nav-actions" v-if="!loading">
           <button class="icon-btn">
             <i class="fas fa-bell"></i>
           </button>
-          <button class="icon-btn">
-            <i class="fas fa-user"></i>
-          </button>
+
+          <div class="profile">
+            <div class="avatar">
+              <img v-if="avatarUrl" :src="avatarUrl" />
+              <span v-else>{{ initials }}</span>
+            </div>
+
+            <span class="username">{{ name }}</span>
+
+            <button class="logout-btn" @click="logout">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -74,10 +85,63 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-const sidebarOpen = ref(false)
-</script>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { supabase } from '/src/lib/supabase'
 
+const router = useRouter()
+const route = useRoute()
+
+const sidebarOpen = ref(false)
+const loading = ref(true)
+
+const name = ref('')
+const avatarUrl = ref(null)
+
+/* ---------------- PAGE TITLE ---------------- */
+const pageTitle = computed(() => {
+  return route.path.replace('/', '').toUpperCase() || 'DASHBOARD'
+})
+
+/* ---------------- INITIALS ---------------- */
+const initials = computed(() => {
+  if (!name.value) return ''
+  return name.value
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+})
+
+/* ---------------- LOAD PROFILE ---------------- */
+onMounted(async () => {
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    router.replace('/auth/login')
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('name, avatar_url')
+    .eq('id', session.user.id)
+    .single()
+
+  if (!error && data) {
+    name.value = data.name
+    avatarUrl.value = data.avatar_url
+  }
+
+  loading.value = false
+})
+
+/* ---------------- LOGOUT ---------------- */
+const logout = async () => {
+  await supabase.auth.signOut()
+  router.replace('/auth/login')
+}
+</script>
 <style scoped>
 /* =====================
    BASE
@@ -240,6 +304,45 @@ const sidebarOpen = ref(false)
   font-size: 1.25rem;
   cursor: pointer;
 }
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.username {
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 
 @media (max-width: 900px) {
   .sidebar {

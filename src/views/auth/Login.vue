@@ -5,74 +5,70 @@
 
       <div class="input-group">
         <label>Email</label>
-        <input type="email" v-model="email" required />
+        <input
+          type="email"
+          v-model="email"
+          placeholder="you@example.com"
+          required
+        />
       </div>
 
       <div class="input-group">
         <label>Password</label>
-        <input type="password" v-model="password" required />
+        <input
+          type="password"
+          v-model="password"
+          required
+        />
       </div>
 
-      <div class="input-group remember">
-        <input type="checkbox" v-model="rememberMe" />
-        <label>Remember me</label>
-      </div>
+      <p v-if="errorMsg" class="error">
+        {{ errorMsg }}
+      </p>
 
-      <!-- LOGIN BUTTON -->
-      <button type="submit" class="btn btn-primary btn-block">
-        Login
+      <button type="submit" :disabled="loading">
+        {{ loading ? 'Logging in...' : 'Login' }}
       </button>
 
-      <!-- AUTH LINKS -->
       <div class="auth-links">
-        <router-link to="/auth/forgot-password">
-          Forgot password?
-        </router-link>
-
-        <div class="divider"></div>
-
-        <span>Don’t have an account?</span>
+        <span>No account?</span>
         <router-link to="/auth/register">
-          Create one
+          Register
         </router-link>
       </div>
     </form>
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { supabase } from '/src/lib/supabase'
 
-export default {
-  data() {
-    return {
-      email: '',
-      password: '',
-      rememberMe: false,
-      loading: false
-    }
-  },
+const router = useRouter()
 
-  methods: {
-    async handleLogin() {
-      this.loading = true
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const errorMsg = ref('')
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: this.email,
-        password: this.password
-      })
+const handleLogin = async () => {
+  errorMsg.value = ''
+  loading.value = true
 
-      this.loading = false
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email.value,
+    password: password.value
+  })
 
-      if (error) {
-        alert(error.message)
-        return
-      }
-
-      // replace prevents back navigation
-      this.$router.replace('/dashboard')
-    }
+  if (error) {
+    errorMsg.value = error.message
+    loading.value = false
+    return
   }
+
+  // redirect after login
+  router.replace('/dashboard')
 }
 </script>
 
