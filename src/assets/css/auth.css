@@ -1,0 +1,157 @@
+/* =========================
+   AUTH PAGE WRAPPER
+========================= */
+.container {
+  min-height: 100vh;
+  background-color: #0a0a0a;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+}
+
+/* =========================
+   AUTH CARD
+========================= */
+form {
+  width: 100%;
+  max-width: 420px;
+  background-color: #000;
+  border: 1px solid #1f1f1f;
+  border-radius: 10px;
+
+  padding: 32px;
+}
+
+/* =========================
+   TITLE
+========================= */
+form h2 {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* =========================
+   INPUT GROUP
+========================= */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.input-group label {
+  color: #bdbdbd;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+/* =========================
+   INPUTS
+========================= */
+.input-group input[type="email"],
+.input-group input[type="password"],
+.input-group input[type="text"] {
+  background-color: #0f0f0f;
+  border: 1px solid #1f1f1f;
+  border-radius: 6px;
+
+  padding: 12px;
+  font-size: 14px;
+  color: #ffffff;
+
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input-group input::placeholder {
+  color: #6b6b6b;
+}
+
+.input-group input:focus {
+  border-color: #ffffff;
+}
+
+/* =========================
+   CHECKBOX
+========================= */
+.input-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ffffff;
+  margin-right: 6px;
+}
+
+.input-group:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* =========================
+   BUTTON
+========================= */
+button[type="submit"] {
+  width: 100%;
+  margin-top: 10px;
+
+  padding: 12px;
+  background-color: #ffffff;
+  color: #000000;
+
+  border: none;
+  border-radius: 6px;
+
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+button[type="submit"]:hover {
+  background-color: #e5e5e5;
+}
+
+button[type="submit"]:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   LINKS (FORGOT / REGISTER)
+========================= */
+.auth-links {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.auth-links a {
+  color: #bdbdbd;
+  font-size: 13px;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+.auth-links span {
+  color: #bdbdbd;
+  margin: 0 8px;
+}
+.auth-links a:hover {
+  color: #ffffff;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 480px) {
+  form {
+    padding: 24px;
+  }
+
+  form h2 {
+    font-size: 20px;
+  }
+}

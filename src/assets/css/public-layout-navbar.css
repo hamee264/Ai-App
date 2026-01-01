@@ -1,0 +1,205 @@
+/* =========================
+   NAVBAR
+========================= */
+.navbar {
+  width: 100%;
+  background-color: #000;
+  border-bottom: 1px solid #1f1f1f;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-container {
+  /* max-width: 1200px; */
+  /* margin: 0 auto; */
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* =========================
+   LOGO
+========================= */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  background-color: #fff;
+  border-radius: 6px;
+}
+
+.logo-text {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* =========================
+   RIGHT SIDE
+========================= */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* =========================
+   LINKS
+========================= */
+.nav-links {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: #bdbdbd;
+  font-size: 14px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-links a:hover,
+.nav-links a.router-link-active {
+  color: #fff;
+}
+
+/* =========================
+   LOGIN TEXT
+========================= */
+.nav-login {
+  color: #bdbdbd;
+  font-size: 14px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-login:hover {
+  color: #fff;
+}
+
+/* =========================
+   SIGNUP BUTTON
+========================= */
+.nav-btn {
+  padding: 9px 16px;
+  background-color: #fff;
+  color: #000;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-btn:hover {
+  background-color: #e5e5e5;
+}
+
+/* =========================
+   HAMBURGER
+========================= */
+.menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* =========================
+   VISIBILITY
+========================= */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: inline-flex;
+}
+
+/* =========================
+   OVERLAY
+========================= */
+.nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 90;
+}
+
+/* =========================
+   CLOSE BUTTON
+========================= */
+.close-btn {
+  display: none;
+  justify-content: flex-end;
+}
+
+.close-btn button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+/* =========================
+   MOBILE
+========================= */
+@media (max-width: 768px) {
+  .menu-btn {
+    display: block;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .nav-links {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 260px;
+    background-color: #000;
+    flex-direction: column;
+    padding: 20px;
+    gap: 16px;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 100;
+  }
+
+  .nav-links.open {
+    transform: translateX(0);
+  }
+
+  .close-btn {
+    display: flex;
+    margin-bottom: 10px;
+  }
+
+  .nav-links a {
+    font-size: 15px;
+  }
+}
