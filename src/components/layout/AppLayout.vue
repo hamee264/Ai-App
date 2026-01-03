@@ -54,8 +54,8 @@
           <span class="page-title">{{ pageTitle }}</span>
         </div>
 
-        <!-- PROFILE AREA -->
-        <div class="nav-actions" v-if="!loading">
+        <!-- PROFILE -->
+        <div class="nav-actions" v-if="!auth.loading && auth.user">
           <button class="icon-btn">
             <i class="fas fa-bell"></i>
           </button>
@@ -85,27 +85,43 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { supabase } from '/src/lib/supabase'
+import { useAuthStore } from '/src/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
 
 const sidebarOpen = ref(false)
-const loading = ref(true)
 
-const name = ref('')
-const avatarUrl = ref(null)
+/* ---------------- INIT AUTH ---------------- */
+onMounted(async () => {
+  if (auth.loading) {
+    await auth.init()
+  }
+
+  if (!auth.user) {
+    router.replace('/auth/login')
+  }
+})
 
 /* ---------------- PAGE TITLE ---------------- */
 const pageTitle = computed(() => {
-  return route.path.replace('/', '').toUpperCase() || 'DASHBOARD'
+  const map = {
+    '/dashboard': 'Dashboard',
+    '/todos': 'Tasks',
+    '/ai-chat': 'AI Chat',
+    '/settings': 'Settings'
+  }
+  return map[route.path] || 'Dashboard'
 })
 
-/* ---------------- INITIALS ---------------- */
+/* ---------------- PROFILE DATA ---------------- */
+const name = computed(() => auth.profile?.name || 'User')
+const avatarUrl = computed(() => auth.profile?.avatar_url || null)
+
 const initials = computed(() => {
-  if (!name.value) return ''
   return name.value
     .split(' ')
     .map(n => n[0])
@@ -113,35 +129,13 @@ const initials = computed(() => {
     .toUpperCase()
 })
 
-/* ---------------- LOAD PROFILE ---------------- */
-onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) {
-    router.replace('/auth/login')
-    return
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('name, avatar_url')
-    .eq('id', session.user.id)
-    .single()
-
-  if (!error && data) {
-    name.value = data.name
-    avatarUrl.value = data.avatar_url
-  }
-
-  loading.value = false
-})
-
 /* ---------------- LOGOUT ---------------- */
 const logout = async () => {
-  await supabase.auth.signOut()
+  await auth.logout()
   router.replace('/auth/login')
 }
 </script>
+
 <style scoped>
 /* =====================
    BASE
@@ -153,7 +147,6 @@ const logout = async () => {
 .app-layout {
   display: flex;
   height: 100vh;
-  /* background: #ffffff; */
   background: #000;
   overflow: hidden;
 }
@@ -163,8 +156,8 @@ const logout = async () => {
 ===================== */
 .sidebar {
   width: 240px;
-  background: #000000;
-  color: #ffffff;
+  background: #000;
+  color: #fff;
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease;
@@ -186,7 +179,7 @@ const logout = async () => {
 }
 
 .menu a {
-  color: #ffffff;
+  color: #fff;
   padding: 0.85rem 1rem;
   margin-bottom: 0.3rem;
   border-radius: 10px;
@@ -195,18 +188,18 @@ const logout = async () => {
   align-items: center;
   gap: 12px;
   font-size: 0.95rem;
-  transition: all 0.2s ease;
+  transition: 0.2s;
 }
 
 .menu a:hover,
 .menu a.router-link-active {
-  background: #ffffff;
-  color: #000000;
+  background: #fff;
+  color: #000;
 }
 
 .menu-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
   margin: 1rem 0;
 }
 
@@ -228,7 +221,7 @@ const logout = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #000000;
+  background: #000;
   border-bottom: 1px solid #111;
   position: sticky;
   top: 0;
@@ -243,8 +236,7 @@ const logout = async () => {
 
 .page-title {
   font-weight: 600;
-  font-size: 1rem;
-  color: #ffffff;
+  color: #fff;
 }
 
 /* =====================
@@ -252,58 +244,19 @@ const logout = async () => {
 ===================== */
 .nav-actions {
   display: flex;
+  align-items: center;
   gap: 0.75rem;
 }
 
 .icon-btn {
   background: transparent;
-  border: 1px solid #ffffff;
-  color: #ffffff;
+  border: 1px solid #fff;
+  color: #fff;
   padding: 0.45rem 0.75rem;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.icon-btn:hover {
-  background: #ffffff;
-  color: #000000;
-}
-
-/* =====================
-   CONTENT
-===================== */
-.content {
-  /* padding: 2rem 2.25rem; */
-  overflow-y: auto;
-  background: #ffffff;
-}
-
-/* =====================
-   OVERLAY
-===================== */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9;
-}
-
-/* =====================
-   MOBILE
-===================== */
-.mobile-only {
-  display: none;
-}
-
-.menu-btn,
-.close-btn {
-  background: none;
-  border: none;
-  color: #ffffff;
-  font-size: 1.25rem;
-  cursor: pointer;
-}
 .profile {
   display: flex;
   align-items: center;
@@ -314,7 +267,7 @@ const logout = async () => {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #ffffff;
+  background: #fff;
   color: #000;
   font-weight: 700;
   display: flex;
@@ -343,6 +296,40 @@ const logout = async () => {
   cursor: pointer;
 }
 
+/* =====================
+   CONTENT
+===================== */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  background: #000;
+}
+
+/* =====================
+   OVERLAY
+===================== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9;
+}
+
+/* =====================
+   MOBILE
+===================== */
+.mobile-only {
+  display: none;
+}
+
+.menu-btn,
+.close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
 
 @media (max-width: 900px) {
   .sidebar {
@@ -360,10 +347,6 @@ const logout = async () => {
 
   .mobile-only {
     display: inline-flex;
-  }
-
-  .content {
-    /* padding: 1.5rem; */
   }
 }
 </style>

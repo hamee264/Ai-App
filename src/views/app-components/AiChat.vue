@@ -3,31 +3,22 @@
 
     <!-- HEADER -->
     <div class="chat-header">
-      <div>
-        <h1>AI Chat</h1>
-        <p>Your personal AI assistant</p>
-      </div>
+      <h1>AI Assistant</h1>
+      <p>Assignments • Coding • Explanations</p>
     </div>
 
     <!-- CHAT BOX -->
     <div ref="chatBox" class="chat-box">
 
-      <!-- EMPTY STATE -->
-      <div v-if="messages.length === 0" class="chat-empty">
-        <i class="fas fa-robot"></i>
-        <h3>Start a conversation</h3>
-        <p>Ask your AI assistant anything</p>
-      </div>
-
       <!-- MESSAGES -->
       <div
-        v-for="(msg, index) in messages"
+        v-for="(msg, index) in visibleMessages"
         :key="index"
         class="message"
-        :class="msg.role"
+        :class="msg.role === 'user' ? 'user' : 'ai'"
       >
         <div class="bubble">
-          {{ msg.text }}
+          {{ msg.content }}
         </div>
       </div>
 
@@ -44,11 +35,11 @@
     <form class="chat-input" @submit.prevent="sendMessage">
       <input
         v-model="input"
-        type="text"
-        placeholder="Type your message..."
+        placeholder="Ask me anything..."
+        :disabled="typing"
       />
-      <button :disabled="!input.trim()">
-        <i class="fas fa-paper-plane"></i>
+      <button :disabled="!input.trim() || typing">
+        Send
       </button>
     </form>
 
@@ -56,135 +47,134 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed } from 'vue'
+import { supabase } from '/src/lib/supabase'
 
 const input = ref('')
-const messages = ref([])
 const typing = ref(false)
 const chatBox = ref(null)
 
-function scrollToBottom() {
+/* MESSAGE STATE */
+const messages = ref([
+  {
+    role: 'system',
+    content:
+      'You are a smart AI assistant. You help with assignments, school work, coding, explanations, and problem solving. Explain clearly and step by step.'
+  }
+])
+
+/* HIDE SYSTEM MESSAGE */
+const visibleMessages = computed(() =>
+  messages.value.filter(m => m.role !== 'system')
+)
+
+/* SCROLL */
+function scrollToBottom () {
   nextTick(() => {
-    chatBox.value.scrollTop = chatBox.value.scrollHeight
+    if (chatBox.value) {
+      chatBox.value.scrollTop = chatBox.value.scrollHeight
+    }
   })
 }
 
-function sendMessage() {
-  if (!input.value.trim()) return
+/* SEND MESSAGE */
+async function sendMessage () {
+  const text = input.value.trim()
+  if (!text || typing.value) return
 
-  // USER MESSAGE
+  // push user message
   messages.value.push({
     role: 'user',
-    text: input.value
+    content: text
   })
 
   input.value = ''
+  typing.value = true
   scrollToBottom()
 
-  // AI TYPING
-  typing.value = true
+  try {
+    // IMPORTANT: send a COPY of messages
+    const payload = messages.value.map(m => ({
+      role: m.role,
+      content: m.content
+    }))
 
-  setTimeout(() => {
-    typing.value = false
-
-    messages.value.push({
-      role: 'ai',
-      text: 'Sure! I can help you with that. What would you like to do next?'
+    const { data, error } = await supabase.functions.invoke('ai-chat', {
+      body: { messages: payload }
     })
 
+    if (error) throw error
+
+    messages.value.push({
+      role: 'assistant',
+      content: data?.reply || 'No response from AI.'
+    })
+
+  } catch (err) {
+    console.error('AI error:', err)
+
+    messages.value.push({
+      role: 'assistant',
+      content: 'Something went wrong. Please try again.'
+    })
+  } finally {
+    typing.value = false
     scrollToBottom()
-  }, 1200)
+  }
 }
 </script>
 
 <style scoped>
-/* =====================
-   BASE
-===================== */
 .ai-chat {
   background: #000;
   color: #fff;
   display: flex;
   flex-direction: column;
   height: 100%;
+  padding: 2rem;
 }
 
-/* =====================
-   HEADER
-===================== */
-.chat-header {
-  padding-bottom: 1.2rem;
-}
-
+/* HEADER */
 .chat-header h1 {
   font-size: 2rem;
   font-weight: 700;
 }
 
 .chat-header p {
-  font-size: 0.95rem;
-  color: #bdbdbd;
+  color: #9ca3af;
 }
 
-/* =====================
-   CHAT BOX
-===================== */
+/* CHAT BOX */
 .chat-box {
   flex: 1;
   background: #0f0f0f;
-  border: 1px solid #1f1f1f;
   border-radius: 18px;
   padding: 1.5rem;
   overflow-y: auto;
+  margin: 1.2rem 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-/* EMPTY */
-.chat-empty {
-  margin: auto;
-  text-align: center;
-  color: #bdbdbd;
-}
-
-.chat-empty i {
-  font-size: 2rem;
-  margin-bottom: 0.8rem;
-}
-
-.chat-empty h3 {
-  color: #fff;
-  margin-bottom: 0.3rem;
-}
-
-/* =====================
-   MESSAGES
-===================== */
+/* MESSAGE */
 .message {
   display: flex;
-}
-
-.message.ai {
-  justify-content: flex-start;
 }
 
 .message.user {
   justify-content: flex-end;
 }
 
+.message.ai {
+  justify-content: flex-start;
+}
+
 .bubble {
   max-width: 70%;
   padding: 0.9rem 1.2rem;
   border-radius: 16px;
-  font-size: 0.95rem;
   line-height: 1.45;
-}
-
-/* AI */
-.message.ai .bubble {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
 }
 
 /* USER */
@@ -193,69 +183,51 @@ function sendMessage() {
   color: #000;
 }
 
-/* =====================
-   TYPING
-===================== */
+/* AI */
+.message.ai .bubble {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+}
+
+/* TYPING */
 .typing span {
   animation: blink 1.4s infinite both;
 }
 
-.typing span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing span:nth-child(3) {
-  animation-delay: 0.4s;
-}
+.typing span:nth-child(2) { animation-delay: 0.2s }
+.typing span:nth-child(3) { animation-delay: 0.4s }
 
 @keyframes blink {
-  0% { opacity: .2; }
-  20% { opacity: 1; }
-  100% { opacity: .2; }
+  0% { opacity: .2 }
+  20% { opacity: 1 }
+  100% { opacity: .2 }
 }
 
-/* =====================
-   INPUT
-===================== */
+/* INPUT */
 .chat-input {
   display: flex;
   gap: 0.8rem;
-  margin-top: 1.2rem;
 }
 
 .chat-input input {
   flex: 1;
-  background: #000;
-  border: 1px solid #333;
+  padding: 0.9rem;
   border-radius: 14px;
-  padding: 0.9rem 1rem;
+  border: 1px solid #333;
+  background: #000;
   color: #fff;
 }
 
 .chat-input button {
   background: #fff;
   color: #000;
-  border: none;
-  padding: 0 1.2rem;
   border-radius: 14px;
+  padding: 0 1.2rem;
   cursor: pointer;
 }
 
 .chat-input button:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* =====================
-   MOBILE
-===================== */
-@media (max-width: 600px) {
-  .chat-header h1 {
-    font-size: 1.6rem;
-  }
-
-  .bubble {
-    max-width: 85%;
-  }
 }
 </style>

@@ -2,266 +2,290 @@
   <div class="settings">
 
     <!-- HEADER -->
-    <div class="settings-header">
+    <header class="settings-header">
       <h1>Settings</h1>
-      <p>Personalize your experience and manage sessions</p>
-    </div>
+      <p>Manage your account</p>
+    </header>
 
-    <!-- SETTINGS GRID -->
-    <div class="settings-grid">
+    <!-- PROFILE -->
+    <section class="card">
 
-      <!-- PROFILE -->
-      <div class="settings-card">
-        <h2>Profile</h2>
-        <p class="hint">Basic information associated with your account</p>
+      <h2>Profile</h2>
 
-        <div class="field">
-          <label>Name</label>
-          <input type="text" placeholder="Not set" />
+      <div class="avatar-row">
+        <img
+          v-if="profile.avatar_url"
+          :src="profile.avatar_url"
+          class="avatar"
+        />
+
+        <div v-else class="avatar placeholder">
+          {{ initials }}
         </div>
 
-        <div class="field">
-          <label>Email</label>
-          <input type="email" placeholder="Not set" disabled />
-        </div>
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/*"
+          hidden
+          @change="handleAvatarUpload"
+        />
 
-        <button class="ghost-btn">Save</button>
-      </div>
-
-      <!-- SECURITY -->
-      <div class="settings-card">
-        <h2>Security</h2>
-        <p class="hint">Change your password if needed</p>
-
-        <div class="field">
-          <label>New password</label>
-          <input
-            :type="showPassword ? 'text' : 'password'"
-            placeholder="••••••••"
-          />
-        </div>
-
-        <div class="field">
-          <label>Confirm password</label>
-          <input
-            :type="showPassword ? 'text' : 'password'"
-            placeholder="••••••••"
-          />
-        </div>
-
-        <div class="toggle">
-          <span>Show password</span>
-          <input type="checkbox" v-model="showPassword" />
-        </div>
-
-        <button class="ghost-btn">Update</button>
-      </div>
-
-      <!-- PREFERENCES -->
-      <div class="settings-card">
-        <h2>Preferences</h2>
-        <p class="hint">Control app behavior</p>
-
-        <div class="toggle">
-          <span>Notifications</span>
-          <input type="checkbox" />
-        </div>
-
-        <div class="toggle">
-          <span>AI Assistance</span>
-          <input type="checkbox" />
-        </div>
-      </div>
-
-      <!-- SESSION -->
-      <div class="settings-card session">
-        <h2>Session</h2>
-        <p class="hint">
-          Log out from this device. You can sign back in anytime.
-        </p>
-
-        <button class="logout-btn" @click="handleLogout">
-          <i class="fas fa-sign-out-alt"></i>
-          Logout
+        <button class="image-btn" @click="fileInput.click()">
+          Choose image
         </button>
       </div>
 
-    </div>
+      <form @submit.prevent="saveProfile">
+        <div class="form-group">
+          <label>Username</label>
+          <input v-model="profile.username" required />
+        </div>
+
+        <div class="form-group">
+          <label>Bio</label>
+          <textarea v-model="profile.bio" />
+        </div>
+
+        <button class="save-btn" :disabled="saving">
+          {{ saving ? 'Saving...' : 'Save changes' }}
+        </button>
+      </form>
+
+    </section>
+
+    <!-- ACCOUNT -->
+    <section class="card danger">
+
+      <h2>Account</h2>
+
+      <button class="logout-btn" @click="logout">
+        Log out
+      </button>
+
+      <button class="delete-btn" @click="deleteAccount">
+        Delete account
+      </button>
+
+    </section>
+
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '/src/lib/supabase'
 
 const router = useRouter()
-const showPassword = ref(false)
+const fileInput = ref(null)
+const saving = ref(false)
 
-const handleLogout = async () => {
-  // 🔐 Proper Supabase logout
-  await supabase.auth.signOut()
+const profile = ref({
+  id: '',
+  username: '',
+  bio: '',
+  avatar_url: ''
+})
 
-  // 🚫 Prevent back navigation
-  router.replace('/auth/login')
+/* ---------------- INITIALS ---------------- */
+const initials = computed(() => {
+  return profile.value.username
+    ? profile.value.username[0].toUpperCase()
+    : '?'
+})
+
+/* ---------------- LOAD PROFILE ---------------- */
+const loadProfile = async () => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', session.user.id)
+    .single()
+
+  if (data) profile.value = data
 }
+
+/* ---------------- SAVE PROFILE ---------------- */
+const saveProfile = async () => {
+  saving.value = true
+
+  const { data: { session } } = await supabase.auth.getSession()
+
+  await supabase.from('profiles').upsert({
+    id: session.user.id,
+    username: profile.value.username,
+    bio: profile.value.bio,
+    avatar_url: profile.value.avatar_url,
+    updated_at: new Date()
+  })
+
+  saving.value = false
+}
+
+/* ---------------- AVATAR UPLOAD (FIXED) ---------------- */
+const handleAvatarUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  const ext = file.name.split('.').pop()
+  const filePath = `${session.user.id}.${ext}`
+
+  // Upload
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, { upsert: true })
+
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  // Get public URL + cache buster
+  const { data } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath)
+
+  profile.value.avatar_url =
+    `${data.publicUrl}?t=${Date.now()}`
+
+  await saveProfile()
+}
+
+/* ---------------- LOGOUT ---------------- */
+const logout = async () => {
+  await supabase.auth.signOut()
+  router.push('/auth/login')
+}
+
+/* ---------------- DELETE ACCOUNT ---------------- */
+const deleteAccount = async () => {
+  const confirmDelete = confirm(
+    'This will permanently delete your account. Continue?'
+  )
+  if (!confirmDelete) return
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  // Remove avatar
+  await supabase.storage
+    .from('avatars')
+    .remove([`${session.user.id}.png`, `${session.user.id}.jpg`])
+
+  // Remove profile
+  await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', session.user.id)
+
+  // Remove auth user
+  await supabase.auth.admin.deleteUser(session.user.id)
+
+  router.push('/')
+}
+
+onMounted(loadProfile)
 </script>
 
 <style scoped>
-/* =====================
-   BASE
-===================== */
 .settings {
   background: #000;
   color: #fff;
   min-height: 100vh;
-  padding: 2rem 2.25rem;
+  padding: 2rem;
 }
 
-/* =====================
-   HEADER
-===================== */
 .settings-header {
-  margin-bottom: 2.2rem;
+  margin-bottom: 2rem;
 }
 
-.settings-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-}
-
-.settings-header p {
-  color: #9e9e9e;
-  font-size: 0.95rem;
-}
-
-/* =====================
-   GRID
-===================== */
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
-}
-
-/* =====================
-   CARD
-===================== */
-.settings-card {
+.card {
+  max-width: 520px;
   background: #0f0f0f;
   border: 1px solid #1f1f1f;
   border-radius: 18px;
   padding: 1.8rem;
+  margin-bottom: 1.5rem;
 }
 
-.settings-card h2 {
-  font-size: 1.15rem;
-  margin-bottom: 0.3rem;
-}
-
-.hint {
-  font-size: 0.85rem;
-  color: #8d8d8d;
-  margin-bottom: 1.4rem;
-}
-
-/* =====================
-   FORM
-===================== */
-.field {
+.avatar-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1.1rem;
-}
-
-.field label {
-  font-size: 0.8rem;
-  color: #bdbdbd;
-}
-
-.field input {
-  background: #000;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 0.65rem 0.8rem;
-  color: #fff;
-  font-size: 0.9rem;
-}
-
-.field input:disabled {
-  opacity: 0.5;
-}
-
-/* =====================
-   TOGGLE
-===================== */
-.toggle {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid #1f1f1f;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.toggle span {
-  font-size: 0.9rem;
+.avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-/* =====================
-   BUTTONS
-===================== */
-.ghost-btn {
-  background: transparent;
-  border: 1px solid #333;
-  color: #fff;
-  padding: 0.55rem 1.2rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
+.placeholder {
+  background: #1f1f1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.image-btn {
+  background: #1f1f1f;
+  border: 1px solid #2a2a2a;
+  color: white;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
   cursor: pointer;
-  transition: 0.2s;
 }
 
-.ghost-btn:hover {
-  border-color: #fff;
-}
-
-/* =====================
-   SESSION
-===================== */
-.session {
+.form-group {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+
+input,
+textarea {
+  background: #000;
+  border: 1px solid #1f1f1f;
+  border-radius: 12px;
+  padding: 0.7rem;
+  color: white;
+}
+
+.save-btn {
+  width: 100%;
+  background: #6366f1;
+  border: none;
+  border-radius: 14px;
+  padding: 0.75rem;
+  font-weight: 600;
 }
 
 .logout-btn {
-  margin-top: 1.5rem;
+  width: 100%;
+  border: 1px solid #ef4444;
+  color: #ef4444;
   background: transparent;
-  border: 1px solid #fff;
-  color: #fff;
-  padding: 0.7rem 1.2rem;
+  padding: 0.7rem;
   border-radius: 14px;
-  font-size: 0.9rem;
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: 0.2s;
+  margin-bottom: 0.7rem;
 }
 
-.logout-btn:hover {
-  background: #fff;
-  color: #000;
-}
-
-/* =====================
-   MOBILE
-===================== */
-@media (max-width: 600px) {
-  .settings-header h1 {
-    font-size: 1.6rem;
-  }
+.delete-btn {
+  width: 100%;
+  background: #ef4444;
+  border: none;
+  padding: 0.7rem;
+  border-radius: 14px;
+  font-weight: 600;
 }
 </style>
